@@ -1524,9 +1524,11 @@ if __name__ == '__main__':
         for line in lines[2:]:
             vals = line.strip().split()
             if (len(vals) == 4):
-                edgeVals.append((vals[0],vals[1],float(vals[2]),float(vals[3])))
+                if ( (float(vals[2]) != 0) | (float(vals[3]) != 0) ):
+                    edgeVals.append((vals[0],vals[1],float(vals[2]),float(vals[3])))
             elif (len(vals) == 3):
-                edgeVals.append((vals[0],vals[1],float(vals[2]),0.0))
+                if (float(vals[2]) != 0):
+                    edgeVals.append((vals[0],vals[1],float(vals[2]),0.0))
             else:
                 print 'bad input line - expecting 2 strings, and either one or two floats.'
                 print 'Found: ',line
