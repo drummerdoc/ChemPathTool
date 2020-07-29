@@ -1,0 +1,339 @@
+Chemical Reaction Path Diagram Tool
+
+
+Introduction: Chemical Reaction Path Diagrams
+
+      The chemical reaction path diagram tool (ChemPathTool) aids in
+the generation of chemical path diagrams for reacting flow systems.
+More generally, Pathtool is used to manipulate graphically the layout
+of a bi-directed graph.  For reacting flow systems, the nodes of this
+graph represent chemical species, and the arrows (or, edges)
+connecting the nodes represent the flow of a conserved quantity
+between species, such as the transfer rate of a particular atom.
+      In our systems, atoms are transferred among species through
+chemical reactions.  For example, when the reaction
+CH4(+M)<=>H+CH3(+M) proceeds, the impact of an arbitrary molecule (M)
+knocks one H atom from the CH4 molecule.  Thus, a carbon atom is
+"transferred" from the set of all CH4 molecules to the set of CH3.
+The progress rate of this reaction (and its reverse, ie sticking an H
+atom onto a CH3 molecule) depends on the local state.  In a typical
+reacting flow calculation there are hundreds of such reactions, and
+the goal is to understand how the state of the fluid affects the
+reaction balance.  The path diagram turns out to be a good way to
+visualize the state of the chemical system.
+    
+   The edges in a path diagram are obtained from a numerically
+simulated reacting flow using three basic steps:
+1. A full state is obtained from the simulation.  The state might
+represent an instantaneous snapshot from a time-dependent simulation
+or a steady solution.  The state includes temperature, pressure,
+density and species distribution.
+2. Forward and reverse reaction rates are computed for every relevant
+chemical reaction in the system using this state.
+3. The reactions are "decomposed" into path diagram edge contributions
+and summed, and are thereby converted to values representing the rate
+that a particular atom is exchanged among chemical species.  The
+summing, or integration, may extend over a section of a
+multidimensional reacting flow domain, or may be conditioned on any
+parameter the investigator may find useful for the analysis.
+
+   The chemical species and atomic flux rates are loaded into our tool
+as graph nodes and directed edges, respectively.  The user then
+manipulates the layout of this graph into a geometry that is visually
+meaningful.  The resulting path diagram is written out as an
+Encapsulated PostScript file for printing or further manipulation, and
+the layout of the nodes can be saved and reused with another set of
+edge strengths.  By changing the input data (simulation parameters,
+region of integration, atom of interest, etc), one can generate a
+series of path diagrams that are useful for identifying patterns in
+the chemical system.
+      There are a number of automated path generation tools available
+on the web.  But from our point of view, they all had a serious flaw
+that rendered them unusable.  All the tools were too smart, in that
+they found all sorts of nifty optimized ways to arrange the nodes
+based on the strength and connectivity of the edges.  Each run
+resulted in a different nodal layout, and any two cases were
+impossible to compare side by side.  (Moreover, there are standard
+species layouts in the combustion literature one might like to
+emulate).  The ChemPathTool allows (or forces, depending your point of
+view) one to specify the location of the nodes regardless of the edge
+strengths.  Since the user must now design graph layouts, we found it
+most simple to provide a simple customized drawing tool.  In the end,
+our simple concept led to a piece of software with two aims: easy
+creation of a nice layout, and application of that layout to multiple
+sets of edge strengths.
+      You may have picked up on one omission from the previous
+paragraph: how to generate the data in practice.  Like all analysis,
+this can be arbitrarily complicated.  In a later section, we present a
+simple example that will guide you in creating your own data.
+
+
+General ChemPathTool Usage
+
+The node names and edge strengths are loaded into the tool as a file
+containing a list of names and numbers.  This may be done while
+starting the tool from the python command-line, or after the tool has
+been started.  The main window of the tool features a prominent
+drawing canvas, and a number of toggle switches and menus.  Beginning
+with a blank canvas, the user makes a subset of the nodes visible and
+arranges them interactively using the mouse pointer ("align",
+"distribute", "group", "lock", "nudge" and "rubber-band select" tools,
+such as those found in common illustration software, make it easy to
+generate publication-quality results).  The directed edges connected
+to the nodes follow them as they are moved around the canvas.  Only
+edges with strength above a threshold are drawn; the threshold value
+is controlled with a "slider" widget as a percentage of a reference
+edge value.  The layout may be saved to a file, and recalled for a new
+dataset.  If the new dataset has a different set of species, only
+those in common with the saved set are placed on the canvas (this
+allows side-by-side comparisons of results from different mechanism
+reductions, for example).  The remaining nodes may be omitted, or
+placed on the canvas in a separate step.  The resulting path diagram
+is then saved in EPS format, allowing annotations and touch-ups by
+fancier illustration packages.  Click here for a demonstration of the
+ChemPathTool in action.
+        
+        
+ChemPathTool Data Requirements
+    
+ChemPathTool requires data input in the form of a list of nodes and a list
+edges.  Data for each node includes the text string that will be used
+as a label.  Edge data includes the labels of the "from" and "to"
+nodes, and the strength of the edge (thickness of the arrow to be
+drawn).  Optionally, two values may be associated with each edge.  The
+data is given to the ChemPathTool in the form of an ascii text file, or
+"ChemPathTool Edge Data" (CED) file, and is loaded via the "File->Load
+Edge Data" menu while the tool is running:
+
+Line 1->Case ID
+Line 2->sp1 sp2 sp3 sp4 sp5 sp6
+Line 3->sp2 sp4 1.9 -2.3
+Line 4->sp1 sp3 2.3 -100
+Line 5->...
+
+The first line of the file contains an ID string that can optionally
+be printed onto the canvas.  The second line contains the set of
+space-delimited names associated with each node.  Each line after that
+contains two species names (each must be on the list given at the
+top), and one or two values.  Often the two values will be of opposite
+sign and indicate the production and depletion of a species--a single
+value would represent their sum.  The ChemPathTool will normalize these
+values linearly and draw edge arrows connecting the nodes on the
+canvas using a correspondingly scaled arrow thickness.  A toggle on
+the panel allows one to coalesce the two on the fly.  Another toggle
+allows one to shut off the auto-scaling (when auto-scaling is off,
+then a weight of 100 produces an arrow 20pts thick).  Some nodes may
+not be connected in a given edge data set.
+
+Input Data Generation - Example
+
+Generation of the data can be arbitrarily complex, depending of course
+on the quantity you're trying to visualize.  In the simplest case, one
+has a single state, which includes the pressure, temperature and
+species distribution.  With this state you will associate a chemical
+reaction mechanism and set of thermodynamic relations between state
+properties.  With these one may compute chemical reaction rates. Then,
+given a choice for which atom to trace through the system, one can
+form the complete set of path diagram edges, and proceed to evaluate
+them into the CED file described in the section above.
+
+As this part of the analysis is outside the scope the ChemPathTool
+intentions, we borrow heavily from Dave Goodwin's Cantera package to
+ease the generation of sample data.  We basically create a filter that
+turns a set of state data into a PED file using the appropriate
+ChemKin(TM) input file and some handy scripts (which are included with
+the ChemPathTool, by the way).
+
+Line  1-> from mechinfo import *
+Line  2-> from CanteraChemEdgeAnalysis import *
+Line  3-> from Cantera import OneAtm
+Line  4-> 
+Line  5-> readMechanism('gri30.inp')
+Line  6-> Nspec = numSpecies()	
+Line  7-> 
+Line  8-> # Set state
+Line  9-> X = [1.0 / Nspec] * Nspec
+Line 10-> setState(2000.0, OneAtm, X)
+Line 11-> 
+Line 12-> # Compute reaction rates
+Line 13-> qf = fwdRatesOfProgress()
+Line 14-> qr = revRatesOfProgress()
+Line 15-> qnet = qf - qr
+Line 16-> 
+Line 17-> # Decompose reactions into edges
+Line 20-> edges = getEdges('C')
+Line 21-> 
+Line 22-> # Dump out nodes and edges
+Line 23-> print join(speciesNames())    
+Line 24-> for e in edges:
+Line 25->     valf = 0.0
+Line 26->     valr = 0.0
+Line 27->     for [r,c] in e.rateWeightList:
+Line 28->         valf += c*qf[r]
+Line 29->         valr += c*qr[r]
+Line 30->     print e.sp1,e.sp2,valf,-valr
+
+This script is written in the python language, but should be easy
+tofollow.  In lines 1-3, we import a number of useful functions from
+Cantera.  We also include CanteraChemEdge-Analysis provided with this
+distribution, which includes a special support function to be
+discussed in momentarily.  Line 5 is the Cantera call to read up a
+ChemKin(TM) style reaction mechanism and thermodynamics database file.
+Line 6 defines a handy variable, and Line 9 uses it to create a
+reasonable value for all the species mole fractions.  Line 10 sets the
+state inside the Cantera package, and then Lines 13-14 use that state
+to compute the forward and reverse reaction rates for all the
+reactions specified in "gri30.inp".  The two calls result in two
+arrays of floating point numbers.
+    
+Line 20 uses the reaction data from "gri30.inp" to generate a set of
+edges that represent the flow of "C" or Carbon through the system.
+This is accomplished by looking at each reaction involving
+carbon-containing species, and identifying the atoms shuffled between
+species as the reaction progress.  For all but a very few cases, such
+a decomposition is unambiguous.  There are exceptions in the automatic
+processing though.  For example, when tracing nitrogen, the reaction
+
+                 HNO + NO2 <=> HONO + NO
+
+may remove an H atom from HNO resulting in NO.  Alternatively, HNO
+could gain an O atom and become HONO.  The code in the
+CanteraChemEdgeAnalysis.py file provided with this distribution
+arbitrarily chooses to transfer the lighter of the two species.
+However, such a decision is certain to be wrong in some
+cases.....buyer beware.
+
+Each edge in the edge list provided by the function "getEdges"
+contains the "to" and "from" species, and a list of reaction id's and
+corresponding multipliers to indicate the number of trace atoms
+transferred on each occurrence of the reaction.  The loop in Lines
+24-29 sums the forward and reverse atomic fluxes separately for each
+edge.  Finally, Lines 23 and 30 print the desired PED file to
+stdout. The resulting text file is then input into the ChemPathTool
+directly.
+
+
+ChemPathTool Installation
+
+<NB: A complete install on a Win2K machine takes about 10 minutes or less>
+
+The path tool is fully contained in a simple (albeit somewhat lengthy)
+Python script.  Python is an interpreted, interactive, object-oriented
+programming language.  It is often compared to Tcl, Perl, Scheme or
+Java.  There are Python interfaces to many system calls and libraries,
+as well as to various windowing systems (X11, Motif, Tk, Mac,
+MFC). The Python implementation is portable: it runs on many brands of
+UNIX, on Windows, DOS, OS/2, Mac, Amiga.  Therefore, our ChemPathTool
+should be fully portable across all platforms supported by Python.
+
+A Python script is a text file that is interpreted by the Python
+interpreter, in a fashion similar to PostScript, MatLab, Mathematica,
+etc.  There is a large body of freely available modules for extending
+Python's basic functionality.  For our puposes, the most useful of
+these are Tkinter and the Python Mega Widgets (Pmw).  Tkinter provides
+a very simple and uniform interface to the local window system
+(X-windows, Microsoft, MacOS, etc) to enable simple GUI construction,
+and is included with the latest Python distribution on most
+platforms. Pmw provide an even simpler interface to some handy buttons
+and such, and is installed by copying a directory into a special
+location in the Python directories built during the default Python
+install.
+
+To install Cantera's Python interface, it's best to go directly to
+Dave Goodwin's Cantera site after you finish the first three steps
+below successfully. See step (4) below for more information.
+
+
+To install ChemPathTool:
+
+1. Go to http://www.python.org/download and get/install the latest
+version of Python (version 2.2.1 as of this writing).
+  
+For windows in particular, you will get the windows
+installer. Double-click on the .exe file you download, verify the
+default install location, and click finish.  There are rpm's for Linux
+and Mac binaries for the Macintosh that are similarly easy to intall.
+For other systems, you've got do the the usual "gunzip; tar;
+configure; make install" deal.  After Python is installed, add the
+Python directory (eg, C:\Program Files\Python22) to your PATH so you
+can run it at the command prompt.
+
+2. Go to http://pmw.sourceforge.net and grab the Pmw tarball (version
+2.0.0 as of this writing)
+
+Unzip and untar, and then put the resulting Pmw directory in your
+Python site-packages area (alternatively be sure that your PYTHONPATH
+environment variable points to a directory that includes the Pmw
+directory).  On my Windows 2000 machine, all the Pmw stuff ended up in
+a directory called
+
+      C:\Program Files\Python22\Lib\site-packages\Pmw
+
+Alternative, and perhaps better, if you have sudo, do 
+
+      sudo python setup.py install
+
+3. Download the ChemPathTool-1.1 tarball from the CCSE software website. 
+
+Unpack ChemPathTool-1.1.tgz, and copy the files that end up in
+the directory "ChemPathTool-1.1" over to the same site-packages directory
+used for (2) above.  On my Win2K machine, I ended up, for example,
+with the file:
+
+      C:\Program Files\Python22\Lib\site-packages\pathTool.py
+
+and a few others like it.
+
+(For a windows machine, you may alternatively grab the Windows install
+file, and double-click it.  This will not only put the ChemPathTool files
+in the correct place, but will provide an uninstall capability
+available from the "Start->Settings->Control Panel->Add/Remove
+Programs" window to clean out the whole thing later if desired.)
+
+4. The sample of python code above is compatible with version 1.3 of
+the Python interface to Cantera, which should be available from the
+Cantera website. Dave was good enough to allow me to have an
+advance copy of the Python components of Cantera 1.3, and to make the
+windows-executable forms available here.  So, for windows machines,
+download the Cantera-1.3.zip file here, and unzip it (for all other
+platforms, you’ll have to get the official 1.3 [or greater] release).  Move the
+resulting Cantera folder into the same site-packages directory used
+for (2) above, or to a place on your PYTHONPATH.  On my windows
+machine, I end up with a directory called
+
+      C:\Program Files\Python22\Lib\site-packages\Cantera
+
+
+To run ChemPathTool:
+
+ChemPathTool may be started two ways:
+1. Double-click on the pathTool.py file in the Python site-packages
+area (requires that your PATH variable includes the directory with the
+python executable).
+2. Import ChemPathTool into a python script, and invoke the tool as a
+function call.  A simple example is included in the distribution as a
+script file, "pathToolScr.py".  From a command-line prompt in the
+directory containing the file “pathToolScr.py”, type “python
+pathToolScr.py”
+
+
+Comments and Acknowledgements
+
+The key to the path diagram tool existence has been in its
+simplicity. We are not software packagers, and have only put a minimal
+effort into its development.  However, we strongly encourage
+suggestions or contributions in terms of additional features and bugs
+reports (to: MSDay@lbl.gov).  General feedback and criticisms of the
+tool are welcome, nay encouraged.  We hope that you find this drawing
+and analysis tool useful and inspiring of new analysis techniques and
+tools.
+
+Also, we should mention that the path tool was developed upon ideas
+originally programmed by Bill Crutchfield.  Bill pointed us to Tkinter
+and created a first-cut implementation that has evolved into its
+present shape.  Also, Joe and I fleshed out our thoughts on reaction
+decomposition in part while talking with Dave Goodwin, the developer
+of the Cantera chemistry package.  Without input from these two, we
+may well have never built the tool.
+
+
