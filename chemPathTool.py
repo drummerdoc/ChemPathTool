@@ -1520,13 +1520,16 @@ if __name__ == '__main__':
         f = open(infile,'r')
         lines = f.readlines()
         label = lines[0].strip()
-        nodes = lines[1].strip().split(' ')
+        nodes = lines[1].strip().split()
         for line in lines[2:]:
-            vals = line.strip().split(' ')
+            vals = line.strip().split()
             if (len(vals) == 4):
                 edgeVals.append((vals[0],vals[1],float(vals[2]),float(vals[3])))
+            elif (len(vals) == 3):
+                edgeVals.append((vals[0],vals[1],float(vals[2]),0.0))
             else:
-                print 'oops, bad input data'
+                print 'bad input line - expecting 2 strings, and either one or two floats.'
+                print 'Found: ',line
         f.close()
 
     widget = ChemPathTool (root, nodes, edgeVals, label)
